@@ -1,43 +1,53 @@
+#include <AdafruitIO.h>
+#include <AdafruitIO_Dashboard.h>
+#include <AdafruitIO_Data.h>
+#include <AdafruitIO_Definitions.h>
+#include <AdafruitIO_Feed.h>
+#include <AdafruitIO_Group.h>
+#include <AdafruitIO_MQTT.h>
+#include <AdafruitIO_Time.h>
+#include <AdafruitIO_WiFi.h>
+
 #include <Ultrasonic.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
+#include "config.h"
 
 // https://www.studiopieters.nl/esp32-pinout/
-const char* ssid = "Eternia";
-const char* password = "celestia";
-
-String setSensor = "https://a.b.c";
 
 int distance;
 
 #define TRIGGER_PIN   26 // D15 - Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN      25 // D2  - Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
-Ultrasonic sonar(TRIGGER_PIN, ECHO_PIN); // NewPing setup of pins and maximum distance.
 
+Ultrasonic sonar(TRIGGER_PIN, ECHO_PIN); // NewPing setup of pins and maximum distance.
+ 
+// set up the 'counter' feed
+AdafruitIO_Feed *ultrassom01 = io.feed("ultrassom01");
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  Serial.println("Connecting");
-  int i = 0;
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  io.connect();
+// wait for a connection
+  while(io.status() < AIO_CONNECTED) {
     Serial.print(".");
-  //  if(i++ > 10){
-  //    break;
-  //    }
+    delay(500);
   }
-  Serial.println("");
-  Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
-  
+  // we are connected
+  Serial.println();
+  Serial.println(io.statusText());
 
 }
 
 void loop() {
-  distance = sonar.read();
-  Serial.println(distance);
-  delay(500);
-}
+
+    distance = sonar.read();
+    
+    io.run();
+    Serial.print("sending -> ");
+    Serial.println(distance);
+
+    ultrassom01->save(distance);
+
+
+    delay(3000);
+ }
