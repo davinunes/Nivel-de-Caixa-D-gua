@@ -14,6 +14,7 @@
 // https://www.studiopieters.nl/esp32-pinout/
 
 int distance;
+int Delay = 10000;
 
 #define TRIGGER_PIN   26 // D15 - Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN      25 // D2  - Arduino pin tied to echo pin on ping sensor.
@@ -23,10 +24,17 @@ Ultrasonic sonar(TRIGGER_PIN, ECHO_PIN); // NewPing setup of pins and maximum di
  
 // set up the 'counter' feed
 AdafruitIO_Feed *ultrassom01 = io.feed("ultrassom01");
+AdafruitIO_Feed *range01 = io.feed("range01");
 
 void setup() {
   Serial.begin(115200);
   io.connect();
+
+  // Quando receber um update da adafruit, executa a função Message
+  range01->onMessage(Message);
+  range01->get();
+
+  
 // wait for a connection
   while(io.status() < AIO_CONNECTED) {
     Serial.print(".");
@@ -49,5 +57,18 @@ void loop() {
     ultrassom01->save(distance);
 
 
-    delay(3000);
+    delay(Delay);
  }
+
+
+
+void Message(AdafruitIO_Data *data) {
+  String tmp = data->value();
+  Serial.print("received <- ");
+  Serial.println(tmp);
+  Delay = tmp.toInt();
+  Delay *= 1000;
+  Serial.print("Novo timeout <- ");
+  Serial.println(Delay);
+
+}
