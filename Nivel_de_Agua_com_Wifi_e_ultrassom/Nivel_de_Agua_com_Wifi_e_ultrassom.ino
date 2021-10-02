@@ -13,21 +13,26 @@
 
 // https://www.studiopieters.nl/esp32-pinout/
 
-int distance;
+int distance1;
+int distance2;
 int Delay = 10000;
 
+#define ECHO_PIN2     33 // D15 - Arduino pin tied to trigger pin on ping sensor.
 #define TRIGGER_PIN   26 // D15 - Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN      25 // D2  - Arduino pin tied to echo pin on ping sensor.
+#define ECHO_PIN1     25 // D2  - Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 400 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-Ultrasonic sonar(TRIGGER_PIN, ECHO_PIN); // NewPing setup of pins and maximum distance.
+Ultrasonic sonar1(TRIGGER_PIN, ECHO_PIN1); // NewPing setup of pins and maximum distance.
+Ultrasonic sonar2(TRIGGER_PIN, ECHO_PIN2); // NewPing setup of pins and maximum distance.
  
 // set up the 'counter' feed
-AdafruitIO_Feed *ultrassom01 = io.feed("ultrassom01");
+AdafruitIO_Feed *sonar01 = io.feed("sonar01");
+AdafruitIO_Feed *sonar02 = io.feed("sonar02");
 AdafruitIO_Feed *range01 = io.feed("range01");
 
 void setup() {
   Serial.begin(115200);
+  
   io.connect();
 
   // Quando receber um update da adafruit, executa a função Message
@@ -41,20 +46,29 @@ void setup() {
     delay(500);
   }
   // we are connected
-  Serial.println();
+  Serial.println("Estamos conectados: ");
   Serial.println(io.statusText());
 
 }
 
 void loop() {
 
-    distance = sonar.read();
+
+
+    //Serial.println(str);
+
+    distance1 = sonar1.read();
+    distance2 = sonar2.read();
     
     io.run();
-    Serial.print("sending -> ");
-    Serial.println(distance);
+    Serial.print("publicando sonar1 -> ");
+    Serial.println(distance1);
 
-    ultrassom01->save(distance);
+    Serial.print("publicando sonar2 -> ");
+    Serial.println(distance2);
+    
+    sonar01->save(distance1);
+    sonar02->save(distance2);
 
 
     delay(Delay);
@@ -64,11 +78,24 @@ void loop() {
 
 void Message(AdafruitIO_Data *data) {
   String tmp = data->value();
-  Serial.print("received <- ");
+  Serial.print("RECEBIDO <- ");
   Serial.println(tmp);
   Delay = tmp.toInt();
   Delay *= 1000;
   Serial.print("Novo timeout <- ");
   Serial.println(Delay);
 
+}
+
+void reverse(){
+int i = 0;
+int j = strlen(str) - 1;
+
+    while (i < j) {
+        temp = str[i];
+        str[i] = str[j];
+        str[j] = temp;
+        i++;
+        j--;
+    }
 }
