@@ -1,38 +1,39 @@
 /* ESTE SKETCH É  BASEADO NO EXEMPLO DA LIBRARY esp8266 and esp32 OLED driver for SSD1306
  * FOI MODIFICADO EM 31/10/2019 POR LEOTRÔNICO http://www.youtube.com/c/LeoTronicoLaboratoriodeeletr%C3%B4nica
- * PARA FACILITAR A EXPLICAÇÃO SOBRE A CONEXÃO E FUNCIONAMENTO DO ESP32-WROOM E DISPLAY OLED
- * NESTA VERSÃO VOCE APENAS DESCOMENTA A LINHA QUE QUER VISUALIZAR OS EFEITOS
+ * Bibliografia: https://www.youtube.com/watch?v=dD2BqAsN96c
+ * PINOUT da placa utilizada: https://raw.githubusercontent.com/AchimPieters/esp32-homekit-camera/master/Images/ESP32-30PIN-DEVBOARD.png
 */
 
-#include "SSD1306Wire.h" // INCLUI: `#include "SSD1306.h"`
 
-// INICIALIZA O DISPLAY COM A LIB SSD1306Wire.h
+/* INICIALIZA O DISPLAY COM A LIB SSD1306Wire.h
+ * SE UTILIZAR O DISPLAY SSD1306:
+ * SSD1306Wire  display(0x3c, SDA, SCL);
+ * SDA -> GPIO21
+ * SCL -> GPIO22
+*/
 
-//SE UTILIZAR O DISPLAY SSD1306:
-//SSD1306Wire  display(0x3c, SDA, SCL);
-//SDA -> GPIO21
-//SCL -> GPIO22
-//https://raw.githubusercontent.com/AchimPieters/esp32-homekit-camera/master/Images/ESP32-30PIN-DEVBOARD.png
-//https://www.youtube.com/watch?v=dD2BqAsN96c
+#include "SSD1306Wire.h"
 SSD1306Wire  display(0x3c, 21, 22);
-//SE UTILIZAR O DISPLAY SH1106:
-// SH1106 display(0x3c, SDA, SCL);
 
 
-// Sensor de Ultrassom
+/* INICIALIZA O Sonar com a LIB Ultrasonic.h
+ * Modelos HC-SR04 ou SEN136B5B
+*/
+
+
 #include <Ultrasonic.h>
-int distance1;
-int minimo;
-int maximo;
-int alturaMaxima = 100;
-int progresso = 0;
-int Delay = 200;
 
-#define TRIGGER_PIN   33 // D15 - Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN1     25 // D2  - Arduino pin tied to echo pin on ping sensor.
-#define MAX_DISTANCE 300 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
+int distance1;          // Distancia medida pelo sensor em CM
+int minimo;             // Menor distancia já medida
+int maximo;             // Maior distancia já medida
+int alturaMaxima = 100; // Altura maxima da coluna de água
+int progresso = 0;      // Calculo da % da barra de progresso
+int Delay = 200;        // Delay entre atualizações
 
-Ultrasonic sonar1(TRIGGER_PIN, ECHO_PIN1, 40000UL); // NewPing setup of pins and maximum distance.
+#define TRIGGER_PIN   33 // Arduino pin tied to trigger pin on ping sensor.
+#define ECHO_PIN1     25 // Arduino pin tied to echo pin on ping sensor.
+
+Ultrasonic sonar1(TRIGGER_PIN, ECHO_PIN1, 40000UL);
 
 
 void setup() {
@@ -60,9 +61,6 @@ void drawFontFaceDemo() {
     display.display();  
        
 }
-
-
-
 
 
 void loop() {
