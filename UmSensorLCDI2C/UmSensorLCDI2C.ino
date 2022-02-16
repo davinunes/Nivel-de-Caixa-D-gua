@@ -14,11 +14,13 @@
 const char* ssid = "Eternia";
 const char* password = "celestia";
 unsigned long lastTime = 0;
-unsigned long timerDelay = 120000; //120 segundos
+unsigned long timerDelay = 60000; //120 segundos
+WiFiClient client;
 
 //Variaveis para usar para enviar mensagem no telegram
 String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
 String chat = "467782812"; //-1001601389998
+String alert = "-1001601389998"; //
 
 /* INICIALIZA O DISPLAY COM A LIB SSD1306Wire.h
  * SE UTILIZAR O DISPLAY SSD1306:
@@ -31,6 +33,23 @@ String chat = "467782812"; //-1001601389998
 SSD1306Wire  display(0x3c, 21, 22);
 
 
+/* Biblioteca Adafruit
+ * 
+*/
+
+#include "Adafruit_MQTT.h"
+#include "Adafruit_MQTT_Client.h"
+#define IO_SERVER      "io.adafruit.com"
+#define IO_SERVERPORT  1883
+#define IO_USERNAME  "ilunne"
+#define IO_KEY     "aio_
+hMjk89XNaWhSBc7UxR70upfJch2A"
+
+Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY);
+Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/sonar01", MQTT_QOS_1);
+
+
+
 /* INICIALIZA O Sonar com a LIB Ultrasonic.h
  * Modelos HC-SR04 ou SEN136B5B
 */
@@ -38,6 +57,7 @@ SSD1306Wire  display(0x3c, 21, 22);
 
 #include <Ultrasonic.h>
 
+int idSensor = 1;
 int distancex;          // Distancia medida pelo sensor em CM
 int distance;          // Distancia medida pelo sensor em CM
 int minimo;             // Menor distancia já medida
@@ -118,9 +138,21 @@ void loop() {
 
   if ((millis() - lastTime) > timerDelay) {
     if(WiFi.status()== WL_CONNECTED){
-      Serial.print("\nHORA DE TAREFAS DA WEB \n");
+      Serial.print("\nHORA DE TAREFAS DA WEB \n\n");
       String msg = "Distancia do Sensor: " + String(distance) + "cm";
-      telegram(msg);
+        telegramLog(msg);
+        eti(distance);
+        conectar_broker();
+        if (!sonar01.publish(distance)) {
+            Serial.println("Erro ao publicar na Adafruit");
+         }else{
+          Serial.println("Publicado na Adafruit");
+          }
+          if(distance > 150){
+            String msg = "Distancia do Sensor: " + String(distance) + "cm, NIVEL DE ÁGUA ABAIXO DO ESPERADO!";
+            telegramAlarm(msg);
+            }
+        //Serial.println(String(sonar01.publish(distance)));
         lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
 
     }else{
@@ -174,8 +206,45 @@ String wget (String url){
       http.end();
   }
 
-  void telegram(String mensagem){
+  void telegramLog(String mensagem){
    // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
      String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + chat + "&text=" + mensagem;
      wget(url);
     }
+   void telegramAlarm(String mensagem){
+   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+     String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + alert + "&text=" + mensagem;
+     wget(url);
+    }
+
+  void eti(int num){
+   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+     String url = "http://davinunes.eti.br/sonar/?sensor=" + String(idSensor) + "&valor=" + String(num);
+     Serial.println(wget(url));
+    }
+
+    /* Conexão com o broker e também servirá para reestabelecer a conexão caso caia */
+void conectar_broker() {
+  int8_t ret;
+ 
+  if (mqtt.connected()) {
+    return;
+  }
+ 
+  Serial.println("Conectando-se ao broker mqtt...");
+ 
+  uint8_t num_tentativas = 3;
+  while ((ret = mqtt.connect()) != 0) {
+    Serial.println(mqtt.connectErrorString(ret));
+    Serial.println("Falha ao se conectar. Tentando se reconectar em 5 segundos.");
+    mqtt.disconnect();
+    delay(5000);
+    num_tentativas--;
+    if (num_tentativas == 0) {
+      Serial.println("Provavelmente não tem internet.");
+      break;
+    }
+  }
+ 
+  Serial.println("Conectado ao broker com sucesso.");
+}
