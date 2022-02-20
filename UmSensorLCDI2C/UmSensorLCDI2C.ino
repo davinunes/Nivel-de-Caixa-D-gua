@@ -1,11 +1,11 @@
 /* ESTE SKETCH É  BASEADO NO EXEMPLO DA LIBRARY esp8266 and esp32 OLED driver for SSD1306
- * FOI MODIFICADO EM 31/10/2019 POR LEOTRÔNICO http://www.youtube.com/c/LeoTronicoLaboratoriodeeletr%C3%B4nica
- * Bibliografia: https://www.youtube.com/watch?v=dD2BqAsN96c
- * PINOUT da placa utilizada: https://raw.githubusercontent.com/AchimPieters/esp32-homekit-camera/master/Images/ESP32-30PIN-DEVBOARD.png
+   FOI MODIFICADO EM 31/10/2019 POR LEOTRÔNICO http://www.youtube.com/c/LeoTronicoLaboratoriodeeletr%C3%B4nica
+   Bibliografia: https://www.youtube.com/watch?v=dD2BqAsN96c
+   PINOUT da placa utilizada: https://raw.githubusercontent.com/AchimPieters/esp32-homekit-camera/master/Images/ESP32-30PIN-DEVBOARD.png
 */
 
 /* INICIALIZA O Wifi
- * e o cliente http
+   e o cliente http
 */
 
 #include <WiFi.h>
@@ -14,7 +14,7 @@
 const char* ssid = "Eternia";
 const char* password = "celestia";
 unsigned long lastTime = 0;
-unsigned long timerDelay = 60000; //120 segundos
+unsigned long timerDelay = 120000; //120 segundos
 WiFiClient client;
 
 //Variaveis para usar para enviar mensagem no telegram
@@ -23,10 +23,10 @@ String chat = "467782812"; //-1001601389998
 String alert = "-1001601389998"; //
 
 /* INICIALIZA O DISPLAY COM A LIB SSD1306Wire.h
- * SE UTILIZAR O DISPLAY SSD1306:
- * SSD1306Wire  display(0x3c, SDA, SCL);
- * SDA -> GPIO21
- * SCL -> GPIO22
+   SE UTILIZAR O DISPLAY SSD1306:
+   SSD1306Wire  display(0x3c, SDA, SCL);
+   SDA -> GPIO21
+   SCL -> GPIO22
 */
 
 #include "SSD1306Wire.h"
@@ -34,7 +34,7 @@ SSD1306Wire  display(0x3c, 21, 22);
 
 
 /* Biblioteca Adafruit
- * 
+
 */
 
 #include "Adafruit_MQTT.h"
@@ -42,16 +42,16 @@ SSD1306Wire  display(0x3c, 21, 22);
 #define IO_SERVER      "io.adafruit.com"
 #define IO_SERVERPORT  1883
 #define IO_USERNAME  "ilunne"
-#define IO_KEY     "aio_
-hMjk89XNaWhSBc7UxR70upfJch2A"
+#define IO_KEY1     "aio_"
+#define IO_KEY2     "hMjk89XNaWhSBc7UxR70upfJch2A"
 
-Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY);
+Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY1 IO_KEY2);
 Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/sonar01", MQTT_QOS_1);
 
 
 
 /* INICIALIZA O Sonar com a LIB Ultrasonic.h
- * Modelos HC-SR04 ou SEN136B5B
+   Modelos HC-SR04 ou SEN136B5B
 */
 
 
@@ -62,7 +62,7 @@ int distancex;          // Distancia medida pelo sensor em CM
 int distance;          // Distancia medida pelo sensor em CM
 int minimo;             // Menor distancia já medida
 int maximo;             // Maior distancia já medida
-int alturaMaxima = 100; // Altura maxima da coluna de água
+int alturaMaxima = 250; // Altura maxima da coluna de água
 int progresso = 0;      // Calculo da % da barra de progresso
 int Delay = 500;        // Delay entre atualizações no LCD e no Serial Console
 
@@ -96,19 +96,19 @@ void loop() {
   Serial.print("Sonar -> ");
   Serial.println(distance);
 
-  if(minimo == 0){
+  if (minimo == 0) {
     minimo = distance;
-    }
-  if(minimo > distance){
+  }
+  if (minimo > distance) {
     minimo = distance;
-    }
+  }
 
-    if(maximo == 0){
+  if (maximo == 0) {
     maximo = distance;
-    }
-  if(maximo < distance){
+  }
+  if (maximo < distance) {
     maximo = distance;
-    }
+  }
 
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -119,17 +119,17 @@ void loop() {
   display.setFont(ArialMT_Plain_10);
   display.drawString(64, 14, String(minimo));
   display.drawString(64, 28, String(maximo));
-  
+
   //display.drawString(0, 40, String(minimo));
   //display.drawString(60, 40, String(maximo));
 
   distance > alturaMaxima ? progresso = alturaMaxima : progresso = distance;
-  progresso = 100 * progresso/400;
-  progresso = 103-progresso;
-  
+  progresso = 100 * progresso / 400;
+  progresso = 103 - progresso;
+
   display.drawString(90, 19, String(progresso));
-  
-  display.drawProgressBar(0,40, 127, 22, progresso);
+
+  display.drawProgressBar(0, 40, 127, 22, progresso);
   display.display();
 
 
@@ -137,102 +137,102 @@ void loop() {
   delay(Delay);
 
   if ((millis() - lastTime) > timerDelay) {
-    if(WiFi.status()== WL_CONNECTED){
+    if (WiFi.status() == WL_CONNECTED) {
       Serial.print("\nHORA DE TAREFAS DA WEB \n\n");
-      String msg = "Distancia do Sensor: " + String(distance) + "cm";
-        telegramLog(msg);
-        eti(distance);
-        conectar_broker();
-        if (!sonar01.publish(distance)) {
-            Serial.println("Erro ao publicar na Adafruit");
-         }else{
-          Serial.println("Publicado na Adafruit");
-          }
-          if(distance > 150){
-            String msg = "Distancia do Sensor: " + String(distance) + "cm, NIVEL DE ÁGUA ABAIXO DO ESPERADO!";
-            telegramAlarm(msg);
-            }
-        //Serial.println(String(sonar01.publish(distance)));
-        lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
+      String msg = "Torre E: Distancia do Sensor: " + String(distance) + "cm";
+      telegramLog(msg);
+      eti(distance);
+      conectar_broker();
+      if (!sonar01.publish(distance)) {
+        Serial.println("Erro ao publicar na Adafruit");
+      } else {
+        Serial.println("Publicado na Adafruit");
+      }
+      if (distance > 150) {
+        String msg = "Torre E: Distancia do Sensor: " + String(distance) + "cm, NIVEL DE ÁGUA ABAIXO DO ESPERADO!";
+        telegramAlarm(msg);
+      }
+      //Serial.println(String(sonar01.publish(distance)));
+      lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
 
-    }else{
-    wifi();
+    } else {
+      wifi();
     }
   }
 
 }
 
-void wifi(){ //conecta no wifi
-    int i = 0;
-  while(WiFi.status() != WL_CONNECTED) {
+void wifi() { //conecta no wifi
+  int i = 0;
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    if(i++ > 10){
+    if (i++ > 10) {
       break;
-      }
-  }
-  
-  }
-int sonar(){
-  distancex =  sonar1.read();
-  for (int i = 0; i <= 10; i++) {
-    distance = sonar1.read();
-      if(distance < distancex){
-          distancex = distance;
-        };
-      delay(60);
     }
-  return distancex;
   }
-String wget (String url){
+
+}
+int sonar() {
+  distancex =  sonar1.read();
+  for (int i = 0; i <= 5; i++) {
+    distance = sonar1.read();
+    if (distance < distancex) {
+      distancex = distance;
+    };
+    delay(60);
+  }
+  return distancex;
+}
+String wget (String url) {
   HTTPClient http;
 
-      String serverPath = url;
-      
-      // Your Domain name with URL path or IP address with path
-      http.begin(serverPath.c_str());
-      
-      // Send HTTP GET request
-      int httpResponseCode = http.GET();
-      
-      if (httpResponseCode>0) {
-        String payload = http.getString();
-        return payload;
+  String serverPath = url;
 
-      }
-      else {
-          return "erro";
-      }
-      http.end();
+  // Your Domain name with URL path or IP address with path
+  http.begin(serverPath.c_str());
+
+  // Send HTTP GET request
+  int httpResponseCode = http.GET();
+
+  if (httpResponseCode > 0) {
+    String payload = http.getString();
+    return payload;
+
   }
+  else {
+    return "erro";
+  }
+  http.end();
+}
 
-  void telegramLog(String mensagem){
-   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
-     String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + chat + "&text=" + mensagem;
-     wget(url);
-    }
-   void telegramAlarm(String mensagem){
-   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
-     String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + alert + "&text=" + mensagem;
-     wget(url);
-    }
+void telegramLog(String mensagem) {
+  // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+  String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + chat + "&text=" + mensagem;
+  wget(url);
+}
+void telegramAlarm(String mensagem) {
+  // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+  String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + alert + "&text=" + mensagem;
+  wget(url);
+}
 
-  void eti(int num){
-   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
-     String url = "http://davinunes.eti.br/sonar/?sensor=" + String(idSensor) + "&valor=" + String(num);
-     Serial.println(wget(url));
-    }
+void eti(int num) {
+  // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+  String url = "http://davinunes.eti.br/sonar/?sensor=" + String(idSensor) + "&valor=" + String(num);
+  Serial.println(wget(url));
+}
 
-    /* Conexão com o broker e também servirá para reestabelecer a conexão caso caia */
+/* Conexão com o broker e também servirá para reestabelecer a conexão caso caia */
 void conectar_broker() {
   int8_t ret;
- 
+
   if (mqtt.connected()) {
     return;
   }
- 
+
   Serial.println("Conectando-se ao broker mqtt...");
- 
+
   uint8_t num_tentativas = 3;
   while ((ret = mqtt.connect()) != 0) {
     Serial.println(mqtt.connectErrorString(ret));
@@ -245,6 +245,6 @@ void conectar_broker() {
       break;
     }
   }
- 
+
   Serial.println("Conectado ao broker com sucesso.");
 }
