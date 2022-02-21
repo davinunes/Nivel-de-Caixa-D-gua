@@ -236,6 +236,10 @@ void IoT() {
       // Lê o que tiver de novo na Adafruit
       callback();
 
+      timerDelay = wget("https://raw.githubusercontent.com/davinunes/Nivel-de-Caixa-D-gua/main/UmSensorLCDI2C/update").toInt();
+      Serial.println(timerDelay);
+      
+      
       String msg = "Torre E-> Distancia do Sensor: " + String(distance) + "cm";
       telegramLog(msg);
       eti(distance);
