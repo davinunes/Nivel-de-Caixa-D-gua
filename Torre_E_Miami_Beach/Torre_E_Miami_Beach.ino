@@ -249,7 +249,7 @@ void IoT() {
         Serial.println("Publicado na Adafruit");
       }
 
-      if (progresso < 25) {
+      if (progresso < 50) {
         String msg = nomeDaSonda + " -> NIVEL DE ÁGUA ABAIXO DO ESPERADO => Reservatório está em " + String(progresso) + "%";
         telegramAlarm(msg);
       }
