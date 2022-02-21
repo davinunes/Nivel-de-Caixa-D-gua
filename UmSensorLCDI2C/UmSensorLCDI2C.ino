@@ -1,11 +1,12 @@
 /* ESTE SKETCH É  BASEADO NO EXEMPLO DA LIBRARY esp8266 and esp32 OLED driver for SSD1306
    FOI MODIFICADO EM 31/10/2019 POR LEOTRÔNICO http://www.youtube.com/c/LeoTronicoLaboratoriodeeletr%C3%B4nica
-   Bibliografia: https://www.youtube.com/watch?v=dD2BqAsN96c
+   Bibliografia: https://www.youtube.com/watch?v=dD2BqAsN96c, https://www.curtocircuito.com.br/blog/Categoria%20IoT/desenvolvimento-de-dashboard-mqtt-com-adafruitio
    PINOUT da placa utilizada: https://raw.githubusercontent.com/AchimPieters/esp32-homekit-camera/master/Images/ESP32-30PIN-DEVBOARD.png
 */
 
 /* INICIALIZA O Wifi
    e o cliente http
+   Todas as variáveis abaixo são referentes ao wifi e ao delay entre os acessos a internet
 */
 
 #include <WiFi.h>
@@ -14,7 +15,7 @@
 const char* ssid = "Eternia";
 const char* password = "celestia";
 unsigned long lastTime = 0;
-unsigned long timerDelay = 120000; //120 segundos
+unsigned long timerDelay = 60000; //120 segundos
 WiFiClient client;
 
 //Variaveis para usar para enviar mensagem no telegram
@@ -30,7 +31,7 @@ String alert = "-1001601389998"; //
 */
 
 #include "SSD1306Wire.h"
-SSD1306Wire  display(0x3c, 21, 22);
+SSD1306Wire display(0x3c, 21, 22);
 
 
 /* Biblioteca Adafruit
@@ -39,14 +40,16 @@ SSD1306Wire  display(0x3c, 21, 22);
 
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-#define IO_SERVER      "io.adafruit.com"
-#define IO_SERVERPORT  1883
-#define IO_USERNAME  "ilunne"
-#define IO_KEY1     "aio_"
-#define IO_KEY2     "hMjk89XNaWhSBc7UxR70upfJch2A"
+#define IO_SERVER     "io.adafruit.com"
+#define IO_SERVERPORT 1883
+#define IO_USERNAME "ilunne"
+#define IO_KEY1    "aio_"
+#define IO_KEY2    "hMjk89XNaWhSBc7UxR70upfJch2A"
 
 Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY1 IO_KEY2);
-Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/sonar01", MQTT_QOS_1);
+Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/MiamiBeachTorreE_Sonda01_centimetros", MQTT_QOS_1);
+Adafruit_MQTT_Publish sonar02 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/MiamiBeachTorreE_Sonda01_porcentagem", MQTT_QOS_1);
+Adafruit_MQTT_Subscribe wifiTime = Adafruit_MQTT_Subscribe(&mqtt, IO_USERNAME "/feeds/Miami_Torre_E_update_time");
 
 
 
@@ -54,136 +57,56 @@ Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds
    Modelos HC-SR04 ou SEN136B5B
 */
 
+#define TRIGGER_PIN  33 // Arduino pin tied to trigger pin on ping sensor.
+#define ECHO_PIN1    25 // Arduino pin tied to echo pin on ping sensor.
+
 
 #include <Ultrasonic.h>
 
-int idSensor = 1;
-int distancex;          // Distancia medida pelo sensor em CM
-int distance;          // Distancia medida pelo sensor em CM
-int minimo;             // Menor distancia já medida
-int maximo;             // Maior distancia já medida
-int alturaMaxima = 250; // Altura maxima da coluna de água
-int progresso = 0;      // Calculo da % da barra de progresso
-int Delay = 500;        // Delay entre atualizações no LCD e no Serial Console
-
-#define TRIGGER_PIN   33 // Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN1     25 // Arduino pin tied to echo pin on ping sensor.
-
 Ultrasonic sonar1(TRIGGER_PIN, ECHO_PIN1, 40000UL);
+
+int idSensor = 1;    // id do sensor no site davinunes.eti.br
+int distancex;          // Distancia medida pelo sensor em CM
+int distance;         // Distancia medida pelo sensor em CM
+int minimo;            // Menor distancia já medida
+int maximo;            // Maior distancia já medida
+int alturaAgua = 250; // Altura maxima da coluna de água
+int distanciaSonda = 10 ; // A que distancia a sonda está do máximo de água
+  int progresso = 0;      // Calculo da % da barra de progresso
+
+
+/*
+
+   ===========================================
+   Configuração durante o boot do ESP32
+   ===========================================
+
+*/
+
+
 
 
 void setup() {
   Serial.begin(115200);
-  WiFi.begin(ssid, password);
-  Serial.println("Connecting");
-  wifi();
-  Serial.println("");
-  Serial.print("Connected to WiFi network with IP Address: ");
-  Serial.println(WiFi.localIP());
-  Serial.println("Ligado");
-  Serial.println();
+  internet();
 
-
-  // INICIALIZA O DISPLAY
+  // INICIALIZA O DISPLAY & INVERTE O DISPLAY VERTICALMENTE
   display.init();
-  display.flipScreenVertically(); // INVERTE O DISPLAY VERTICALMENTE
+  display.flipScreenVertically();
+
+
+  // Realiza as inscrições MQTT
+  mqtt.subscribe(&wifiTime);
 }
+
 //========================================================================
 
 void loop() {
-
-  distance = sonar();
-  Serial.print("Sonar -> ");
-  Serial.println(distance);
-
-  if (minimo == 0) {
-    minimo = distance;
-  }
-  if (minimo > distance) {
-    minimo = distance;
-  }
-
-  if (maximo == 0) {
-    maximo = distance;
-  }
-  if (maximo < distance) {
-    maximo = distance;
-  }
-
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "DISTANCIA DA TAMPA");
-  display.setFont(ArialMT_Plain_24);
-  display.drawString(0, 14, String(distance));
-  display.setFont(ArialMT_Plain_10);
-  display.drawString(64, 14, String(minimo));
-  display.drawString(64, 28, String(maximo));
-
-  //display.drawString(0, 40, String(minimo));
-  //display.drawString(60, 40, String(maximo));
-
-  distance > alturaMaxima ? progresso = alturaMaxima : progresso = distance;
-  progresso = 100 * progresso / 400;
-  progresso = 103 - progresso;
-
-  display.drawString(90, 19, String(progresso));
-
-  display.drawProgressBar(0, 40, 127, 22, progresso);
-  display.display();
-
-
-
-  delay(Delay);
-
-  if ((millis() - lastTime) > timerDelay) {
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.print("\nHORA DE TAREFAS DA WEB \n\n");
-      String msg = "Torre E: Distancia do Sensor: " + String(distance) + "cm";
-      telegramLog(msg);
-      eti(distance);
-      conectar_broker();
-      if (!sonar01.publish(distance)) {
-        Serial.println("Erro ao publicar na Adafruit");
-      } else {
-        Serial.println("Publicado na Adafruit");
-      }
-      if (distance > 150) {
-        String msg = "Torre E: Distancia do Sensor: " + String(distance) + "cm, NIVEL DE ÁGUA ABAIXO DO ESPERADO!";
-        telegramAlarm(msg);
-      }
-      //Serial.println(String(sonar01.publish(distance)));
-      lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
-
-    } else {
-      wifi();
-    }
-  }
-
+  sonar();
+  tela();
+  IoT();
 }
 
-void wifi() { //conecta no wifi
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-    if (i++ > 10) {
-      break;
-    }
-  }
-
-}
-int sonar() {
-  distancex =  sonar1.read();
-  for (int i = 0; i <= 5; i++) {
-    distance = sonar1.read();
-    if (distance < distancex) {
-      distancex = distance;
-    };
-    delay(60);
-  }
-  return distancex;
-}
 String wget (String url) {
   HTTPClient http;
 
@@ -247,4 +170,113 @@ void conectar_broker() {
   }
 
   Serial.println("Conectado ao broker com sucesso.");
+}
+
+void callback() {
+  Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(5000))) {
+    if (subscription == &wifiTime) {
+      Serial.print(F("Got: "));
+      Serial.println((char *)wifiTime.lastread);
+    }
+  }
+}
+
+void sonar() {
+  distancex = sonar1.read();
+  for (int i = 0; i <= 5; i++) {
+    distance = sonar1.read();
+    if (distance < distancex) {
+      distancex = distance;
+    };
+    delay(60);
+  }
+  distance = distance - distanciaSonda;
+  Serial.print("Sonar -> ");
+  Serial.println(distance);
+
+  if (minimo == 0 || minimo > distance) {
+    minimo = distance;
+  }
+
+
+  if (maximo == 0 || maximo < distance) {
+    maximo = distance;
+  }
+
+  distance > alturaAgua ? progresso = alturaAgua : progresso = distance;
+  progresso = 100 * progresso / alturaAgua;
+  progresso = 100 - progresso;
+
+}
+
+void tela() {
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "DISTANCIA DA TAMPA");
+  display.setFont(ArialMT_Plain_24);
+  display.drawString(0, 14, String(distance));
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(64, 14, String(minimo));
+  display.drawString(64, 28, String(maximo));
+  //display.drawString(0, 40, String(minimo));
+  //display.drawString(60, 40, String(maximo));
+  display.drawString(90, 19, String(progresso));
+  display.drawProgressBar(0, 40, 127, 22, progresso);
+  display.display();
+  delay(500);
+}
+
+void IoT() {
+  if ((millis() - lastTime) > timerDelay) {
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("HORA DE TAREFAS DA WEB");
+
+      // Lê o que tiver de novo na Adafruit
+      callback();
+
+      String msg = "Torre E-> Distancia do Sensor: " + String(distance) + "cm";
+      telegramLog(msg);
+      eti(distance);
+
+      conectar_broker();
+
+      if (!sonar01.publish(distance) || !sonar02.publish(progresso)){
+        Serial.println("Erro ao publicar na Adafruit");
+      } else {
+        Serial.println("Publicado na Adafruit");
+      }
+
+      if (progresso < 25) {
+        String msg = "Torre E -> NIVEL DE ÁGUA ABAIXO DO ESPERADO => Reservatório está em " + String(progresso) + "%";
+        telegramAlarm(msg);
+      }
+      //Serial.println(String(sonar01.publish(distance)));
+      lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
+
+    } else {
+      internet();
+    }
+  }
+}
+
+void internet(){
+  if (WiFi.status() == WL_CONNECTED) {
+    return;
+  } else {
+    WiFi.begin(ssid, password);
+    Serial.println("Conectando na rede WiFi");
+    int i = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+      if (i++ > 10) {
+        break;
+      }
+
+    }
+    Serial.println("Conectado com IP: ");
+    Serial.println(WiFi.localIP());
+  }
 }
