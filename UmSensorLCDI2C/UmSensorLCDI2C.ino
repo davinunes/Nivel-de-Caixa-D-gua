@@ -6,12 +6,12 @@
 
 // CONFIGURAÇÕES DA INSTALAÇÃO
 
-int idSensor = 1;    // id do sensor no site davinunes.eti.br
-int distanciaSonda = 20 ; // A que distancia a sonda está do nivel máximo de água
-int alturaAgua = 240; // Altura maxima da coluna de água (Não considerar a distancia da Sonda)
-String nomeDaSonda = "Torre E Reservatório 01"; // Nome da Sonda nas mensagens do Telegram
-const char* ssid = "TAIFIBRA-BLOCO E"; // Nome da Rede Wifi  
-const char* password = "taifibratelecom"; // Senha da rede Wifi
+int idSensor = 99;    // id do sensor no site davinunes.eti.br
+int distanciaSonda = 1 ; // A que distancia a sonda está do nivel máximo de água
+int alturaAgua = 150; // Altura maxima da coluna de água (Não considerar a distancia da Sonda)
+String nomeDaSonda = "Desenvolvimento Reservatório 01"; // Nome da Sonda nas mensagens do Telegram
+const char* ssid = "Eternia"; // Nome da Rede Wifi  
+const char* password = "celestia"; // Senha da rede Wifi
 
 /* INICIALIZA O Wifi
    e o cliente http
@@ -24,6 +24,7 @@ const char* password = "taifibratelecom"; // Senha da rede Wifi
 unsigned long lastTime = 0;
 unsigned long timerDelay = 60000; //120 segundos
 WiFiClient client;
+String StatusInternet = "Sem Wifi...";
 
 //Variaveis para usar para enviar mensagem no telegram
 String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
@@ -54,9 +55,9 @@ SSD1306Wire display(0x3c, 21, 22);
 #define IO_KEY2    "hMjk89XNaWhSBc7UxR70upfJch2A"
 
 Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY1 IO_KEY2);
-Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/MiamiBeachTorreE_Sonda01_centimetros", MQTT_QOS_1);
-Adafruit_MQTT_Publish sonar02 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/MiamiBeachTorreE_Sonda01_porcentagem", MQTT_QOS_1);
-Adafruit_MQTT_Subscribe wifiTime = Adafruit_MQTT_Subscribe(&mqtt, IO_USERNAME "/feeds/Miami_Torre_E_update_time");
+Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/PlacaDSV_Sonda01_centimetros", MQTT_QOS_1);
+Adafruit_MQTT_Publish sonar02 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/PlacaDSV_Sonda01_porcentagem", MQTT_QOS_1);
+Adafruit_MQTT_Subscribe wifiTime = Adafruit_MQTT_Subscribe(&mqtt, IO_USERNAME "/feeds/PlacaDSV_update_time");
 
 
 
@@ -211,7 +212,7 @@ void tela() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "DISTANCIA DA TAMPA");
+  display.drawString(0, 0, StatusInternet);
   display.setFont(ArialMT_Plain_24);
   display.drawString(0, 14, String(distance));
   display.setFont(ArialMT_Plain_10);
@@ -226,6 +227,7 @@ void tela() {
 }
 
 void IoT() {
+  internet();
   if ((millis() - lastTime) > timerDelay) {
     if (WiFi.status() == WL_CONNECTED) {
       Serial.println("HORA DE TAREFAS DA WEB");
@@ -256,16 +258,16 @@ void IoT() {
       //Serial.println(String(sonar01.publish(distance)));
       lastTime = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
 
-    } else {
-      internet();
     }
   }
 }
 
 void internet(){
   if (WiFi.status() == WL_CONNECTED) {
+    StatusInternet = "Conectado:"+String(WiFi.localIP());
     return;
   } else {
+    StatusInternet = "Sem Wifi...";
     WiFi.begin(ssid, password);
     Serial.println("Conectando na rede WiFi");
     int i = 0;
