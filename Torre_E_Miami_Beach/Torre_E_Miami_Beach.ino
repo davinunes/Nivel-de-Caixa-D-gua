@@ -24,6 +24,7 @@ const char* password = "taifibratelecom"; // Senha da rede Wifi
 unsigned long lastTime = 0;
 unsigned long timerDelay = 60000; //120 segundos
 WiFiClient client;
+String StatusInternet = "Sem Wifi...";
 
 //Variaveis para usar para enviar mensagem no telegram
 String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
@@ -211,7 +212,7 @@ void tela() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(ArialMT_Plain_10);
-  display.drawString(0, 0, "DISTANCIA DA TAMPA");
+  display.drawString(0, 0, StatusInternet);
   display.setFont(ArialMT_Plain_24);
   display.drawString(0, 14, String(distance));
   display.setFont(ArialMT_Plain_10);
@@ -264,6 +265,7 @@ void IoT() {
 
 void internet(){
   if (WiFi.status() == WL_CONNECTED) {
+    StatusInternet = "Conectado:"+String(WiFi.localIP());
     return;
   } else {
     WiFi.begin(ssid, password);
