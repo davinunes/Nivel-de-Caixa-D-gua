@@ -264,7 +264,7 @@ void IoT() {
 
 void internet(){
   if (WiFi.status() == WL_CONNECTED) {
-    StatusInternet = "Conectado:"+String(WiFi.localIP());
+    StatusInternet = "Conectado!";
     return;
   } else {
     StatusInternet = "Sem Wifi...";
