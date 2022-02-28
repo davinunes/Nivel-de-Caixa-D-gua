@@ -6,12 +6,27 @@
 
 // CONFIGURAÇÕES DA INSTALAÇÃO
 
-int idSensor = 99;    // id do sensor no site davinunes.eti.br
+int idSensor = 99;    // id do sensor no site davinunes.eti.br (ou outro que for escolhido)
 int distanciaSonda = 1 ; // A que distancia a sonda está do nivel máximo de água
 int alturaAgua = 150; // Altura maxima da coluna de água (Não considerar a distancia da Sonda)
 String nomeDaSonda = "Desenvolvimento Reservatório 01"; // Nome da Sonda nas mensagens do Telegram
 const char* ssid = "Eternia"; // Nome da Rede Wifi  
 const char* password = "celestia"; // Senha da rede Wifi
+
+// Endereços do github que serão utilizados para ajustar variáveis remotas:
+String IntervaloDePush = "https://github.com/davinunes/TopLifeMiami-Nivel-de-gua/blob/main/parametros/updateTime";
+String nivelAlertaTelegram = "https://raw.githubusercontent.com/davinunes/TopLifeMiami-Nivel-de-gua/main/parametros/nivelAlerta";
+
+//Variaveis para usar para enviar mensagem no telegram
+String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
+String chat = "-1001158157448"; //Chat do telgram que receberá qualquer leitura do sensor
+String alert = "-1001601389998"; // Chat do telgram que receberá mensagem apenas quando o nivel da água estiver abaixo do esperado
+
+// Variaveis relacionadas a Adafruit
+#define IO_USERNAME "ilunne" //usuario
+#define IO_KEY2    "hMjk89XNaWhSBc7UxR70upfJch2A" //Cole apenas a parte depois do underline
+#define FEED_CM "/feeds/PlacaDSV_Sonda01_centimetros"
+#define FEED_PERC "/feeds/PlacaDSV_Sonda01_porcentagem"
 
 /* INICIALIZA O Wifi
    e o cliente http
@@ -22,14 +37,13 @@ const char* password = "celestia"; // Senha da rede Wifi
 #include <HTTPClient.h>
 
 unsigned long lastTime = 0;
+unsigned long lastTimeAlert = 0;
 unsigned long timerDelay = 60000; //120 segundos
+unsigned long timerAlerta = 300000; //5 minutos
+unsigned long nivelAlerta = 80; //80%
 WiFiClient client;
 String StatusInternet = "Sem Wifi...";
 
-//Variaveis para usar para enviar mensagem no telegram
-String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
-String chat = "467782812"; //-1001601389998
-String alert = "-1001601389998"; //
 
 /* INICIALIZA O DISPLAY COM A LIB SSD1306Wire.h
    SE UTILIZAR O DISPLAY SSD1306:
@@ -50,13 +64,13 @@ SSD1306Wire display(0x3c, 21, 22);
 #include "Adafruit_MQTT_Client.h"
 #define IO_SERVER     "io.adafruit.com"
 #define IO_SERVERPORT 1883
-#define IO_USERNAME "ilunne"
 #define IO_KEY1    "aio_"
+#define IO_USERNAME "ilunne"
 #define IO_KEY2    "hMjk89XNaWhSBc7UxR70upfJch2A"
 
 Adafruit_MQTT_Client mqtt(&client, IO_SERVER, IO_SERVERPORT, IO_USERNAME, IO_KEY1 IO_KEY2);
-Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/PlacaDSV_Sonda01_centimetros", MQTT_QOS_1);
-Adafruit_MQTT_Publish sonar02 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME "/feeds/PlacaDSV_Sonda01_porcentagem", MQTT_QOS_1);
+Adafruit_MQTT_Publish sonar01 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME FEED_CM, MQTT_QOS_1);
+Adafruit_MQTT_Publish sonar02 = Adafruit_MQTT_Publish(&mqtt, IO_USERNAME FEED_PERC, MQTT_QOS_1);
 Adafruit_MQTT_Subscribe wifiTime = Adafruit_MQTT_Subscribe(&mqtt, IO_USERNAME "/feeds/PlacaDSV_update_time");
 
 
@@ -88,8 +102,30 @@ int progresso = 0;      // Calculo da % da barra de progresso
 
 */
 
+/*
+ * 
+ * Protótipos
+ * 
+ * das
+ * 
+ * funções
+ */
 
+String wget (String url);
+void telegramLog(String mensagem);
+void telegramAlarm(String mensagem);
+void eti(int num);
+void conectar_broker();
+void callback();
+void sonar();
+void tela();
+void IoT();
+void internet();
+void getParametrosRemotos();
 
+/*
+ * Setup
+ */
 
 void setup() {
   Serial.begin(115200);
@@ -111,6 +147,11 @@ void loop() {
   tela();
   IoT();
 }
+
+/*
+ * funções
+ */
+
 
 String wget (String url) {
   HTTPClient http;
@@ -136,13 +177,17 @@ String wget (String url) {
 
 void telegramLog(String mensagem) {
   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
+  // https://api.telegram.org/bot5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8/getUpdates
   String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + chat + "&text=" + mensagem;
   wget(url);
 }
 void telegramAlarm(String mensagem) {
+  if ((millis() - lastTimeAlert) > timerAlerta) {
   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
   String url = "https://api.telegram.org/bot" + chaveTelegram + "/sendMessage?chat_id=" + alert + "&text=" + mensagem;
   wget(url);
+  lastTimeAlert = millis(); // Esta linha sempre no final BLOCO QUE CONTROLA O TIMER!
+  }
 }
 
 void eti(int num) {
@@ -234,16 +279,13 @@ void IoT() {
 
       // Lê o que tiver de novo na Adafruit
       callback();
-
-      timerDelay = wget("https://raw.githubusercontent.com/davinunes/Nivel-de-Caixa-D-gua/main/UmSensorLCDI2C/update").toInt();
-      Serial.println(timerDelay);
-      
       
       String msg = nomeDaSonda + " -> Distancia do Sensor: " + String(distance) + "cm";
       telegramLog(msg);
       eti(distance);
 
       conectar_broker();
+      getParametrosRemotos();
 
       if (!sonar01.publish(distance) || !sonar02.publish(progresso)){
         Serial.println("Erro ao publicar na Adafruit");
@@ -251,8 +293,8 @@ void IoT() {
         Serial.println("Publicado na Adafruit");
       }
 
-      if (progresso < 25) {
-        String msg = nomeDaSonda + " -> NIVEL DE ÁGUA ABAIXO DO ESPERADO => Reservatório está em " + String(progresso) + "%";
+      if (progresso < nivelAlerta) {
+        String msg = nomeDaSonda + " -> NIVEL DE ÁGUA ABAIXO DO ESPERADO! => Reservatório está em " + String(progresso) + "%";
         telegramAlarm(msg);
       }
       //Serial.println(String(sonar01.publish(distance)));
@@ -264,7 +306,7 @@ void IoT() {
 
 void internet(){
   if (WiFi.status() == WL_CONNECTED) {
-    StatusInternet = "Conectado!";
+    StatusInternet = "NaRede!"+WiFi.localIP().toString();
     return;
   } else {
     StatusInternet = "Sem Wifi...";
@@ -283,3 +325,10 @@ void internet(){
     Serial.println(WiFi.localIP());
   }
 }
+
+void getParametrosRemotos(){
+      timerDelay = wget(IntervaloDePush).toInt();
+      nivelAlerta = wget(nivelAlertaTelegram).toInt();
+      Serial.println(timerDelay);
+      Serial.println(nivelAlerta);
+  }
