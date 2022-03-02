@@ -16,6 +16,7 @@ const char* password = "celestia"; // Senha da rede Wifi
 // Endereços do github que serão utilizados para ajustar variáveis remotas:
 String IntervaloDePush = "https://github.com/davinunes/TopLifeMiami-Nivel-de-gua/blob/main/parametros/updateTime";
 String nivelAlertaTelegram = "https://raw.githubusercontent.com/davinunes/TopLifeMiami-Nivel-de-gua/main/parametros/nivelAlerta";
+String urlSite = "h2o-miami.davinunes.eti.br";
 
 //Variaveis para usar para enviar mensagem no telegram
 String chaveTelegram = "5199663658:AAF4D8-KtthX87TGX6pYHBiLGTTZYPyU3Z8";
@@ -192,7 +193,8 @@ void telegramAlarm(String mensagem) {
 
 void eti(int num) {
   // ColeSeuTokenAqui ColeIDdoGrupoAqui TestandoEnvio
-  String url = "http://davinunes.eti.br/sonar/?sensor=" + String(idSensor) + "&valor=" + String(num);
+  //Vamos obter a URL perguntando também ao github
+  String url = urlSite+"/sonda/?sensor=" + String(idSensor) + "&valor=" + String(num);
   Serial.println(wget(url));
 }
 
@@ -329,6 +331,7 @@ void internet(){
 void getParametrosRemotos(){
       timerDelay = wget(IntervaloDePush).toInt();
       nivelAlerta = wget(nivelAlertaTelegram).toInt();
+      urlSite = wget(nivelAlertaTelegram);
       Serial.println(timerDelay);
       Serial.println(nivelAlerta);
   }

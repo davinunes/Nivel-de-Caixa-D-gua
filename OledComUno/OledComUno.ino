@@ -24,7 +24,7 @@ void setup() {
 void loop() {
   sonar();
   tela(distance);
-  delay(50);
+  delay(250);
 }
 
 
